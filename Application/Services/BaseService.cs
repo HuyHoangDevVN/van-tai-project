@@ -136,9 +136,9 @@ public abstract class BaseService
             SqlParamModel.Input(SpParams.SortBy, NullIfEmpty(request.NormalizedSortBy)),
             SqlParamModel.Input(SpParams.SortDesc, request.SortDesc ? 1 : 0, MySqlDbType.Int32),
 
-            // Date range filtering (nullable)
-            SqlParamModel.Input(SpParams.DateFrom, request.FromDate),
-            SqlParamModel.Input(SpParams.DateTo, request.ToDate),
+            // NOTE: Date range params (p_tu_ngay, p_den_ngay) removed from base
+            // as they are NOT universal across all SPs.
+            // Add them as additional params for specific SPs that need them.
 
             // Output parameter for total record count (required for paging metadata)
             SqlParamModel.Output(SpParams.TotalRecord, MySqlDbType.Int64)

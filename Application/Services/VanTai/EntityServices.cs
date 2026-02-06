@@ -35,12 +35,13 @@ public class TaiXeService : BaseService, ITaiXeService
 
         try
         {
-            // Build entity-specific filter parameters
+            // Build entity-specific filter parameters matching proc_tim_kiem_tai_xe
+            // SP Parameters: p_keyword, p_gioi_tinh, p_que_quan, p_offset, p_limit, p_sort_by, p_sort_desc
             var additionalParams = new[]
             {
                 SqlParamModel.Input("p_gioi_tinh", NullIfEmpty(request.GioiTinh)),
-                SqlParamModel.Input("p_que_quan", NullIfEmpty(request.QueQuan)),
-                SqlParamModel.Input("p_contract_status", NullIfEmpty(request.ContractStatus))
+                SqlParamModel.Input("p_que_quan", NullIfEmpty(request.QueQuan))
+                // NOTE: p_trang_thai_hop_dong removed - not in proc_tim_kiem_tai_xe
             };
 
             // Execute paged search using base helper
@@ -242,12 +243,13 @@ public class XeService : BaseService, IXeService
 
         try
         {
-            // Build entity-specific filter parameters
+            // Build entity-specific filter parameters matching proc_tim_kiem_xe
+            // SP Parameters: p_keyword, p_status, p_hang_san_xuat, p_offset, p_limit, p_sort_by, p_sort_desc
             var additionalParams = new[]
             {
-                SqlParamModel.Input("p_status", NullIfEmpty(request.Status)),
-                SqlParamModel.Input("p_hang_san_xuat", NullIfEmpty(request.HangSanXuat)),
-                SqlParamModel.Input("p_bus_type", NullIfEmpty(request.BusType))
+                SqlParamModel.Input("p_status", NullIfEmpty(request.Status)),  // Changed from p_trang_thai to p_status
+                SqlParamModel.Input("p_hang_san_xuat", NullIfEmpty(request.HangSanXuat))
+                // NOTE: p_loai_xe removed - not in proc_tim_kiem_xe
             };
 
             // Execute paged search using base helper
@@ -357,7 +359,7 @@ public class XeService : BaseService, IXeService
 
 /// <summary>
 /// Service implementation for ChuyenXe (Trip) entity.
-/// Uses BaseService for paged search operations.
+/// Includes business operations: Hoàn thành chuyến, Hủy chuyến.
 /// </summary>
 public class ChuyenXeService : BaseService, IChuyenXeService
 {
@@ -382,11 +384,13 @@ public class ChuyenXeService : BaseService, IChuyenXeService
 
         try
         {
+            // Build entity-specific filter parameters matching proc_tim_kiem_chuyen_xe
+            // NOTE: Bảng chuyen_xe KHÔNG có cột trang_thai, chỉ filter theo ma_tuyen và ngày
             var additionalParams = new[]
             {
                 SqlParamModel.Input("p_ma_tuyen", NullIfEmpty(request.MaTuyen)),
-                SqlParamModel.Input("p_ma_xe", NullIfEmpty(request.MaXe)),
-                SqlParamModel.Input("p_status", NullIfEmpty(request.Status))
+                SqlParamModel.Input("p_tu_ngay", request.FromDate),
+                SqlParamModel.Input("p_den_ngay", request.ToDate)
             };
 
             return await ExecutePagedSearchAsync<TripSearchResultDto>(
@@ -481,6 +485,105 @@ public class ChuyenXeService : BaseService, IChuyenXeService
             ? BaseResponse<object>.Ok("Xóa chuyến xe thành công")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// CRITICAL OPERATION:
+    /// Triggers maintenance tracking algorithm:
+    /// 1. Get RouteDistance and DifficultyCoef from Route
+    /// 2. Calculate: AddedWorkKm = RouteDistance * DifficultyCoef
+    /// 3. UPDATE xe SET tong_km_van_hanh = tong_km_van_hanh + AddedWorkKm
+    /// 4. UPDATE tai_xe SET tong_so_chuyen = tong_so_chuyen + 1
+    /// </remarks>
+    public async Task<BaseResponse<object>> HoanThanhAsync(string maChuyen, CancellationToken cancellationToken = default)
+    {
+        var validation = ValidateRequired<object>(maChuyen, "Mã chuyến");
+        if (validation != null) return validation;
+
+        Logger.LogInformation("Hoàn thành chuyến: {MaChuyen} - Cập nhật km bảo trì cho xe", maChuyen);
+
+        try
+        {
+            string spName = await GetProcNameAsync(FunctionKeys.Trip.COMPLETE);
+
+            var model = new SqlExecuteModel(spName)
+            {
+                IsStoredProcedure = true,
+                Params =
+                [
+                    SqlParamModel.Input("p_ma_chuyen", maChuyen),
+                    SqlParamModel.Output(SqlConstants.P_ResponseCode, MySqlConnector.MySqlDbType.Int32),
+                    SqlParamModel.Output(SqlConstants.P_ResponseMessage, MySqlConnector.MySqlDbType.VarChar, 500)
+                ]
+            };
+
+            var result = await SqlService.ProcExecuteNonQueryAsync(model, cancellationToken);
+
+            if (result.Success)
+            {
+                Logger.LogInformation(
+                    "Chuyến {MaChuyen} hoàn thành. Dữ liệu bảo trì đã được cập nhật.", maChuyen);
+            }
+
+            return MapSpResponse(result);
+        }
+        catch (Exception ex)
+        {
+            return HandleException<object>(ex, "HoanThanhChuyen");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<BaseResponse<object>> HuyChuyen(string maChuyen, CancellationToken cancellationToken = default)
+    {
+        var validation = ValidateRequired<object>(maChuyen, "Mã chuyến");
+        if (validation != null) return validation;
+
+        Logger.LogInformation("Hủy chuyến: {MaChuyen}", maChuyen);
+
+        try
+        {
+            var spName = await GetProcNameOrDefaultAsync(FunctionKeys.Trip.DELETE);
+
+            if (spName != null)
+            {
+                var model = new SqlExecuteModel(spName)
+                {
+                    IsStoredProcedure = true,
+                    Params =
+                    [
+                        SqlParamModel.Input("p_ma_chuyen", maChuyen),
+                        SqlParamModel.Output(SqlConstants.P_ResponseCode, MySqlConnector.MySqlDbType.Int32),
+                        SqlParamModel.Output(SqlConstants.P_ResponseMessage, MySqlConnector.MySqlDbType.VarChar, 500)
+                    ]
+                };
+
+                return await SqlService.ProcExecuteNonQueryAsync(model, cancellationToken);
+            }
+            else
+            {
+                var model = SqlExecuteModel.RawQuery(
+                    "UPDATE chuyen_xe SET trang_thai = 'Cancelled' WHERE ma_chuyen = @ma_chuyen AND trang_thai = 'Scheduled'")
+                    .AddInput("ma_chuyen", maChuyen);
+
+                var result = await SqlService.ExecuteSqlRawNonQueryAsync(model, cancellationToken);
+
+                if (result.Success && result.Data == 0)
+                {
+                    return BaseResponse<object>.NotFound(
+                        "Không thể hủy chuyến. Chuyến không tồn tại hoặc đã ở trạng thái khác.");
+                }
+
+                return result.Success
+                    ? BaseResponse<object>.Ok("Hủy chuyến thành công")
+                    : BaseResponse<object>.Error(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            return HandleException<object>(ex, "HuyChuyen");
+        }
+    }
 }
 
 /// <summary>
@@ -510,11 +613,11 @@ public class KhachHangService : BaseService, IKhachHangService
 
         try
         {
-            var additionalParams = new[]
-            {
-                SqlParamModel.Input("p_ma_giam_ho", NullIfEmpty(request.MaGiamHo)),
-                SqlParamModel.Input("p_customer_type", NullIfEmpty(request.CustomerType))
-            };
+            // Build entity-specific filter parameters matching proc_tim_kiem_khach_hang
+            // SP Parameters: p_keyword, p_offset, p_limit, p_sort_by, p_sort_desc
+            // NOTE: SP only has keyword search + paging, NO additional filters
+            var additionalParams = Array.Empty<SqlParamModel>();
+            // p_ma_giam_ho and p_loai_khach_hang removed - not in proc_tim_kiem_khach_hang
 
             return await ExecutePagedSearchAsync<CustomerSearchResultDto>(
                 FunctionKeys.Customer.SEARCH,
@@ -639,12 +742,13 @@ public class TuyenDuongService : BaseService, ITuyenDuongService
 
         try
         {
-            // Build entity-specific filter parameters
+            // Build entity-specific filter parameters matching proc_tim_kiem_tuyen_duong
+            // SP Parameters: p_keyword, p_diem_di, p_diem_den, p_offset, p_limit, p_sort_by, p_sort_desc
             var additionalParams = new[]
             {
                 SqlParamModel.Input("p_diem_di", NullIfEmpty(request.DiemDi)),
-                SqlParamModel.Input("p_diem_den", NullIfEmpty(request.DiemDen)),
-                SqlParamModel.Input("p_ma_do_phuc_tap", NullIfEmpty(request.MaDoPhucTap))
+                SqlParamModel.Input("p_diem_den", NullIfEmpty(request.DiemDen))
+                // NOTE: p_ma_do_phuc_tap removed - not in proc_tim_kiem_tuyen_duong
             };
 
             return await ExecutePagedSearchAsync<RouteSearchResultDto>(
@@ -743,7 +847,7 @@ public class TuyenDuongService : BaseService, ITuyenDuongService
 
 /// <summary>
 /// Service implementation for Ve (Ticket) entity.
-/// Uses BaseService for paged search operations.
+/// Includes business operations: Đặt vé, Hủy vé.
 /// </summary>
 public class VeService : BaseService, IVeService
 {
@@ -763,6 +867,7 @@ public class VeService : BaseService, IVeService
             "Searching tickets - Keyword: {Keyword}, Customer: {Customer}, Trip: {Trip}",
             request.NormalizedKeyword, request.MaKhach, request.MaChuyen);
 
+        // Validate request
         var validation = ValidateSearchRequest<TPaging<TicketSearchResultDto>>(request);
         if (validation != null) return validation;
 
@@ -775,6 +880,7 @@ public class VeService : BaseService, IVeService
                 SqlParamModel.Input("p_ma_chuyen", NullIfEmpty(request.MaChuyen))
             };
 
+            // Execute paged search using base helper
             return await ExecutePagedSearchAsync<TicketSearchResultDto>(
                 FunctionKeys.Ticket.SEARCH,
                 request,
@@ -870,5 +976,132 @@ public class VeService : BaseService, IVeService
         return result.Success
             ? BaseResponse<object>.Ok("Xóa vé thành công")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// SP checks:
+    /// 1. Trip exists and is in bookable status (Scheduled/InProgress)
+    /// 2. SoldTickets < Bus.SeatCount (capacity check)
+    /// 3. Specific seat not already taken (if ma_ghe specified)
+    /// </remarks>
+    public async Task<BaseResponse<int>> DatVeAsync(TicketBookingRequest request, CancellationToken cancellationToken = default)
+    {
+        var validation = ValidateRequired<int>(request.MaKhach, "Mã khách hàng");
+        if (validation != null) return validation;
+
+        validation = ValidateRequired<int>(request.MaChuyen, "Mã chuyến");
+        if (validation != null) return validation;
+
+        Logger.LogInformation("Đặt vé cho khách: {MaKhach}, chuyến: {MaChuyen}",
+            request.MaKhach, request.MaChuyen);
+
+        try
+        {
+            string spName = await GetProcNameAsync(FunctionKeys.Ticket.BOOK);
+
+            var model = new SqlExecuteModel(spName)
+            {
+                IsStoredProcedure = true,
+                Params =
+                [
+                    SqlParamModel.Input("p_ma_khach", request.MaKhach),
+                    SqlParamModel.Input("p_ma_chuyen", request.MaChuyen),
+                    SqlParamModel.Input("p_phuong_thuc_tt", request.PhuongThucTT),
+                    SqlParamModel.Input("p_vi_tri", request.ViTri),
+                    SqlParamModel.Input("p_ma_ghe", request.MaGhe),
+                    SqlParamModel.Input("p_ma_giuong", request.MaGiuong),
+                    SqlParamModel.Output(SqlConstants.P_ResponseCode, MySqlConnector.MySqlDbType.Int32),
+                    SqlParamModel.Output(SqlConstants.P_ResponseMessage, MySqlConnector.MySqlDbType.VarChar, 500),
+                    SqlParamModel.Output("p_stt_ve", MySqlConnector.MySqlDbType.Int32)
+                ]
+            };
+
+            var result = await SqlService.ProcExecuteNonQueryAsync(model, cancellationToken);
+
+            if (result.Success)
+            {
+                Logger.LogInformation("Đặt vé thành công cho chuyến {MaChuyen}", request.MaChuyen);
+                return BaseResponse<int>.Ok(0, result.Message);
+            }
+
+            return BaseResponse<int>.Error(result.Message, result.ErrorCode);
+        }
+        catch (Exception ex)
+        {
+            return HandleException<int>(ex, "DatVe");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<BaseResponse<object>> HuyVeAsync(int stt, CancellationToken cancellationToken = default)
+    {
+        if (stt <= 0)
+        {
+            return BaseResponse<object>.ValidationError("Số thứ tự vé không hợp lệ.");
+        }
+
+        Logger.LogInformation("Hủy vé: {Stt}", stt);
+
+        try
+        {
+            string spName = await GetProcNameAsync(FunctionKeys.Ticket.CANCEL);
+
+            var model = new SqlExecuteModel(spName)
+            {
+                IsStoredProcedure = true,
+                Params =
+                [
+                    SqlParamModel.Input("p_stt", stt),
+                    SqlParamModel.Output(SqlConstants.P_ResponseCode, MySqlConnector.MySqlDbType.Int32),
+                    SqlParamModel.Output(SqlConstants.P_ResponseMessage, MySqlConnector.MySqlDbType.VarChar, 500)
+                ]
+            };
+
+            var result = await SqlService.ProcExecuteNonQueryAsync(model, cancellationToken);
+
+            return MapSpResponse(result);
+        }
+        catch (Exception ex)
+        {
+            return HandleException<object>(ex, "HuyVe");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<BaseResponse<List<VeDto>>> GetByChuyenAsync(string maChuyen, CancellationToken cancellationToken = default)
+    {
+        var validation = ValidateRequired<List<VeDto>>(maChuyen, "Mã chuyến");
+        if (validation != null) return validation;
+
+        Logger.LogInformation("Lấy danh sách vé theo chuyến: {MaChuyen}", maChuyen);
+
+        try
+        {
+            var spName = await GetProcNameOrDefaultAsync(FunctionKeys.Ticket.GET_BY_TRIP);
+
+            if (spName != null)
+            {
+                var model = new SqlExecuteModel(spName)
+                {
+                    IsStoredProcedure = true,
+                    Params = [SqlParamModel.Input("p_ma_chuyen", maChuyen)]
+                };
+
+                return await SqlService.ExecuteProceReturnAsync<VeDto>(model, cancellationToken);
+            }
+            else
+            {
+                var model = SqlExecuteModel.RawQuery(
+                    "SELECT * FROM ve WHERE ma_chuyen = @ma_chuyen ORDER BY thoi_gian_dat DESC")
+                    .AddInput("ma_chuyen", maChuyen);
+
+                return await SqlService.ExecuteSqlRawCommandAsync<VeDto>(model, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            return HandleException<List<VeDto>>(ex, "GetByChuyenAsync");
+        }
     }
 }

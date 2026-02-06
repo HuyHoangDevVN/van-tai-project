@@ -14,13 +14,13 @@ public static class FunctionKeys
     // =========================================================================
     public static class Report
     {
-        public const string CHI_PHI_CO_BAN = "proc_tinh_chi_phi_co_ban";
-        public const string DOANH_THU_XE_BUS_NGOI = "proc_tinh_doanh_thu_xe_bus_ngoi";
-        public const string DOANH_THU_XE_BUS_NGOI_THANG = "proc_tinh_doanh_thu_xe_bus_ngoi_thang";
-        public const string GIA_VE_XE_BUS_NGOI = "proc_tinh_gia_ve_xe_bus_ngoi";
+        public const string CHI_PHI_CO_BAN = "proc_chi_phi_co_ban";
+        public const string DOANH_THU_XE_BUS_NGOI = "proc_doanh_thu_xe_bus_ngoi";
+        public const string DOANH_THU_XE_BUS_NGOI_THANG = "proc_doanh_thu_xe_bus_ngoi_thang";
+        public const string GIA_VE_XE_BUS_NGOI = "proc_gia_ve_xe_bus_ngoi";
         public const string DOANH_THU_TUYEN_DUONG = "proc_tinh_doanh_thu_tuyen_duong";
-        public const string DOANH_THU_TUYEN_DUONG_THANG = "proc_tinh_doanh_thu_tuyen_duong_thang";
-        public const string LUONG_THANG_TAI_XE = "proc_tinh_luong_thang_tai_xe";
+        public const string DOANH_THU_TUYEN_DUONG_THANG = "proc_tinh_doanh_thu_tuyen_duong_theo_thang";
+        public const string LUONG_THANG_TAI_XE = "proc_tinh_luong_thang";
         public const string TUYEN_DUONG_XE_GIUONG_NAM = "proc_lay_tuyen_duong_xe_giuong_nam";
         public const string KHACH_HANG_QUAY_LAI = "proc_lay_khach_hang_quay_lai";
     }

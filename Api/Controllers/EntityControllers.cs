@@ -8,6 +8,7 @@ namespace Api.Controllers;
 
 /// <summary>
 /// API Controller for TaiXe (Driver) management.
+/// Route: /api/tai-xe
 /// </summary>
 [ApiController]
 [Route("api/tai-xe")]
@@ -26,10 +27,7 @@ public class TaiXeController : ControllerBase
     /// <summary>
     /// T?m ki?m tài x? v?i phân trang và l?c.
     /// </summary>
-    /// <param name="request">Search parameters including paging, sorting, and filters</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Paged list of drivers</returns>
-    [HttpGet("search")]
+    [HttpGet("tim-kiem")]
     [ProducesResponseType(typeof(BaseResponse<TPaging<DriverSearchResultDto>>), 200)]
     public async Task<IActionResult> Search([FromQuery] DriverSearchReq request, CancellationToken cancellationToken)
     {
@@ -87,6 +85,7 @@ public class TaiXeController : ControllerBase
 
 /// <summary>
 /// API Controller for Xe (Vehicle) management.
+/// Route: /api/xe
 /// </summary>
 [ApiController]
 [Route("api/xe")]
@@ -100,7 +99,7 @@ public class XeController : ControllerBase
     /// <summary>
     /// T?m ki?m xe v?i phân trang và l?c.
     /// </summary>
-    [HttpGet("search")]
+    [HttpGet("tim-kiem")]
     [ProducesResponseType(typeof(BaseResponse<TPaging<BusSearchResultDto>>), 200)]
     public async Task<IActionResult> Search([FromQuery] BusSearchReq request, CancellationToken ct)
         => ToActionResult(await _service.SearchAsync(request, ct));
@@ -129,6 +128,9 @@ public class XeController : ControllerBase
 
 /// <summary>
 /// API Controller for ChuyenXe (Trip) management.
+/// Route: /api/chuyen-xe
+/// 
+/// Includes business operations: Hoàn thành chuy?n, H?y chuy?n.
 /// </summary>
 [ApiController]
 [Route("api/chuyen-xe")]
@@ -136,13 +138,18 @@ public class XeController : ControllerBase
 public class ChuyenXeController : ControllerBase
 {
     private readonly IChuyenXeService _service;
+    private readonly ILogger<ChuyenXeController> _logger;
 
-    public ChuyenXeController(IChuyenXeService service) => _service = service;
+    public ChuyenXeController(IChuyenXeService service, ILogger<ChuyenXeController> logger)
+    {
+        _service = service;
+        _logger = logger;
+    }
 
     /// <summary>
     /// T?m ki?m chuy?n xe v?i phân trang và l?c.
     /// </summary>
-    [HttpGet("search")]
+    [HttpGet("tim-kiem")]
     [ProducesResponseType(typeof(BaseResponse<TPaging<TripSearchResultDto>>), 200)]
     public async Task<IActionResult> Search([FromQuery] TripSearchReq request, CancellationToken ct)
         => ToActionResult(await _service.SearchAsync(request, ct));
@@ -166,11 +173,59 @@ public class ChuyenXeController : ControllerBase
     [HttpDelete("{maChuyen}")]
     public async Task<IActionResult> Delete(string maChuyen, CancellationToken ct) => ToActionResult(await _service.DeleteAsync(maChuyen, ct));
 
+    /// <summary>
+    /// Hoàn thành chuy?n xe - C?p nh?t km b?o tr?.
+    /// </summary>
+    /// <remarks>
+    /// **CRITICAL OPERATION** - Triggers maintenance data update:
+    /// 1. C?p nh?t tr?ng thái chuy?n -> Completed
+    /// 2. Tính toán km v?n hành: KM tãng = QuangDuong × HeSoKhoKhan
+    /// 3. C?p nh?t xe.tong_km_van_hanh += KM tãng
+    /// 4. C?p nh?t tai_xe.tong_so_chuyen += 1
+    /// </remarks>
+    [HttpPut("{maChuyen}/hoan-thanh")]
+    [ProducesResponseType(typeof(BaseResponse<object>), 200)]
+    [ProducesResponseType(typeof(BaseResponse<object>), 400)]
+    [ProducesResponseType(typeof(BaseResponse<object>), 404)]
+    public async Task<IActionResult> HoanThanh(
+        [FromRoute] string maChuyen,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("API: Hoàn thành chuy?n {MaChuyen}", maChuyen);
+
+        var result = await _service.HoanThanhAsync(maChuyen, ct);
+
+        return result.Success ? Ok(result)
+            : result.ErrorCode == SqlConstants.ResponseCode_NotFound ? NotFound(result)
+            : BadRequest(result);
+    }
+
+    /// <summary>
+    /// H?y chuy?n xe.
+    /// </summary>
+    /// <remarks>
+    /// Ch? có th? h?y chuy?n có tr?ng thái "Scheduled".
+    /// </remarks>
+    [HttpPut("{maChuyen}/huy")]
+    [ProducesResponseType(typeof(BaseResponse<object>), 200)]
+    [ProducesResponseType(typeof(BaseResponse<object>), 400)]
+    public async Task<IActionResult> HuyChuyen(
+        [FromRoute] string maChuyen,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("API: H?y chuy?n {MaChuyen}", maChuyen);
+
+        var result = await _service.HuyChuyen(maChuyen, ct);
+
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
     private IActionResult ToActionResult<T>(BaseResponse<T> r) => r.Success ? Ok(r) : r.ErrorCode == SqlConstants.ResponseCode_NotFound ? NotFound(r) : BadRequest(r);
 }
 
 /// <summary>
 /// API Controller for KhachHang (Customer) management.
+/// Route: /api/khach-hang
 /// </summary>
 [ApiController]
 [Route("api/khach-hang")]
@@ -184,7 +239,7 @@ public class KhachHangController : ControllerBase
     /// <summary>
     /// T?m ki?m khách hàng v?i phân trang và l?c.
     /// </summary>
-    [HttpGet("search")]
+    [HttpGet("tim-kiem")]
     [ProducesResponseType(typeof(BaseResponse<TPaging<CustomerSearchResultDto>>), 200)]
     public async Task<IActionResult> Search([FromQuery] CustomerSearchReq request, CancellationToken ct)
         => ToActionResult(await _service.SearchAsync(request, ct));
@@ -213,6 +268,7 @@ public class KhachHangController : ControllerBase
 
 /// <summary>
 /// API Controller for TuyenDuong (Route) management.
+/// Route: /api/tuyen-duong
 /// </summary>
 [ApiController]
 [Route("api/tuyen-duong")]
@@ -226,7 +282,7 @@ public class TuyenDuongController : ControllerBase
     /// <summary>
     /// T?m ki?m tuy?n ðý?ng v?i phân trang và l?c.
     /// </summary>
-    [HttpGet("search")]
+    [HttpGet("tim-kiem")]
     [ProducesResponseType(typeof(BaseResponse<TPaging<RouteSearchResultDto>>), 200)]
     public async Task<IActionResult> Search([FromQuery] RouteSearchReq request, CancellationToken ct)
         => ToActionResult(await _service.SearchAsync(request, ct));
@@ -255,6 +311,9 @@ public class TuyenDuongController : ControllerBase
 
 /// <summary>
 /// API Controller for Ve (Ticket) management.
+/// Route: /api/ve
+/// 
+/// Includes business operations: Ð?t vé, H?y vé.
 /// </summary>
 [ApiController]
 [Route("api/ve")]
@@ -262,13 +321,18 @@ public class TuyenDuongController : ControllerBase
 public class VeController : ControllerBase
 {
     private readonly IVeService _service;
+    private readonly ILogger<VeController> _logger;
 
-    public VeController(IVeService service) => _service = service;
+    public VeController(IVeService service, ILogger<VeController> logger)
+    {
+        _service = service;
+        _logger = logger;
+    }
 
     /// <summary>
     /// T?m ki?m vé v?i phân trang và l?c.
     /// </summary>
-    [HttpGet("search")]
+    [HttpGet("tim-kiem")]
     [ProducesResponseType(typeof(BaseResponse<TPaging<TicketSearchResultDto>>), 200)]
     public async Task<IActionResult> Search([FromQuery] TicketSearchReq request, CancellationToken ct)
         => ToActionResult(await _service.SearchAsync(request, ct));
@@ -291,6 +355,68 @@ public class VeController : ControllerBase
 
     [HttpDelete("{stt:int}")]
     public async Task<IActionResult> Delete(int stt, CancellationToken ct) => ToActionResult(await _service.DeleteAsync(stt, ct));
+
+    /// <summary>
+    /// Ð?t vé cho khách hàng.
+    /// </summary>
+    /// <remarks>
+    /// **Constraint Check**: Stored procedure ki?m tra:
+    /// - Chuy?n xe t?n t?i và ðang ? tr?ng thái có th? ð?t (Scheduled)
+    /// - S? vé ð? bán &lt; S? gh? c?a xe (capacity check)
+    /// - Gh?/giý?ng c? th? chýa ðý?c ð?t (n?u có ch? ð?nh)
+    /// </remarks>
+    [HttpPost("dat-ve")]
+    [ProducesResponseType(typeof(BaseResponse<int>), 200)]
+    [ProducesResponseType(typeof(BaseResponse<int>), 400)]
+    public async Task<IActionResult> DatVe(
+        [FromBody] TicketBookingRequest request,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("API: Ð?t vé cho khách {MaKhach}, chuy?n {MaChuyen}",
+            request.MaKhach, request.MaChuyen);
+
+        var result = await _service.DatVeAsync(request, ct);
+
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>
+    /// H?y vé.
+    /// </summary>
+    /// <remarks>
+    /// Ch? có th? h?y vé khi:
+    /// - Vé chýa ðý?c h?y trý?c ðó
+    /// - Chuy?n xe chýa hoàn thành
+    /// </remarks>
+    [HttpPut("{stt:int}/huy")]
+    [ProducesResponseType(typeof(BaseResponse<object>), 200)]
+    [ProducesResponseType(typeof(BaseResponse<object>), 400)]
+    [ProducesResponseType(typeof(BaseResponse<object>), 404)]
+    public async Task<IActionResult> HuyVe(
+        [FromRoute] int stt,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("API: H?y vé {Stt}", stt);
+
+        var result = await _service.HuyVeAsync(stt, ct);
+
+        return result.Success ? Ok(result)
+            : result.ErrorCode == SqlConstants.ResponseCode_NotFound ? NotFound(result)
+            : BadRequest(result);
+    }
+
+    /// <summary>
+    /// L?y danh sách vé theo chuy?n xe.
+    /// </summary>
+    [HttpGet("theo-chuyen/{maChuyen}")]
+    [ProducesResponseType(typeof(BaseResponse<List<VeDto>>), 200)]
+    public async Task<IActionResult> GetByChuyen(
+        [FromRoute] string maChuyen,
+        CancellationToken ct = default)
+    {
+        var result = await _service.GetByChuyenAsync(maChuyen, ct);
+        return Ok(result);
+    }
 
     private IActionResult ToActionResult<T>(BaseResponse<T> r) => r.Success ? Ok(r) : r.ErrorCode == SqlConstants.ResponseCode_NotFound ? NotFound(r) : BadRequest(r);
 }

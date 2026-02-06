@@ -64,6 +64,7 @@ public interface IXeService
 /// <summary>
 /// Interface for ChuyenXe (Trip) Service.
 /// CRUD operations for chuyen_xe table.
+/// Includes business operations: Hoàn thành chuyến, Hủy chuyến.
 /// </summary>
 public interface IChuyenXeService
 {
@@ -78,6 +79,22 @@ public interface IChuyenXeService
     Task<BaseResponse<object>> CreateAsync(ChuyenXeRequest request, CancellationToken cancellationToken = default);
     Task<BaseResponse<object>> UpdateAsync(string maChuyen, ChuyenXeRequest request, CancellationToken cancellationToken = default);
     Task<BaseResponse<object>> DeleteAsync(string maChuyen, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Hoàn thành chuyến xe - CRITICAL: Cập nhật km vận hành cho xe.
+    /// </summary>
+    /// <remarks>
+    /// Triggers maintenance tracking:
+    /// 1. Trip status -> Completed
+    /// 2. Bus.TotalWorkKm += RouteDistance * DifficultyCoef
+    /// 3. Driver.TotalTrips++
+    /// </remarks>
+    Task<BaseResponse<object>> HoanThanhAsync(string maChuyen, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Hủy chuyến xe (chỉ áp dụng cho chuyến ở trạng thái Scheduled).
+    /// </summary>
+    Task<BaseResponse<object>> HuyChuyen(string maChuyen, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -121,6 +138,7 @@ public interface ITuyenDuongService
 /// <summary>
 /// Interface for Ve (Ticket) Service.
 /// CRUD operations for ve table.
+/// Includes business operations: Đặt vé, Hủy vé.
 /// </summary>
 public interface IVeService
 {
@@ -135,4 +153,25 @@ public interface IVeService
     Task<BaseResponse<object>> CreateAsync(VeRequest request, CancellationToken cancellationToken = default);
     Task<BaseResponse<object>> UpdateAsync(int stt, VeRequest request, CancellationToken cancellationToken = default);
     Task<BaseResponse<object>> DeleteAsync(int stt, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Đặt vé cho khách hàng (kiểm tra số ghế trống).
+    /// </summary>
+    /// <remarks>
+    /// SP checks:
+    /// - Chuyến xe tồn tại và đang ở trạng thái có thể đặt
+    /// - Số vé đã bán < Số ghế của xe
+    /// - Ghế cụ thể chưa được đặt (nếu có chỉ định)
+    /// </remarks>
+    Task<BaseResponse<int>> DatVeAsync(TicketBookingRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Hủy vé.
+    /// </summary>
+    Task<BaseResponse<object>> HuyVeAsync(int stt, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lấy danh sách vé theo chuyến xe.
+    /// </summary>
+    Task<BaseResponse<List<VeDto>>> GetByChuyenAsync(string maChuyen, CancellationToken cancellationToken = default);
 }

@@ -6,23 +6,24 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Controllers;
 
 /// <summary>
-/// Controller for Maintenance Management (Quản lý bảo trì xe).
+/// API Controller for Maintenance Management (Quản lý bảo trì xe).
+/// Route: /api/bao-tri
 /// 
 /// Maintenance Algorithm:
 /// - Xe cần bảo trì nếu > 360 ngày kể từ lần bảo trì cuối
 /// - HOẶC tong_km_van_hanh vượt ngưỡng cấu hình
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/bao-tri")]
 [Produces("application/json")]
-public class MaintenanceController : ControllerBase
+public class BaoTriController : ControllerBase
 {
     private readonly IMaintenanceService _maintenanceService;
-    private readonly ILogger<MaintenanceController> _logger;
+    private readonly ILogger<BaoTriController> _logger;
 
-    public MaintenanceController(
+    public BaoTriController(
         IMaintenanceService maintenanceService,
-        ILogger<MaintenanceController> logger)
+        ILogger<BaoTriController> logger)
     {
         _maintenanceService = maintenanceService;
         _logger = logger;
@@ -46,12 +47,12 @@ public class MaintenanceController : ControllerBase
     /// - SoNgayTuBaoTri (days since maintenance)
     /// - CanBaoTri (true/false - needs maintenance)
     /// </remarks>
-    [HttpGet("status")]
+    [HttpGet("trang-thai")]
     [ProducesResponseType(typeof(BaseResponse<List<MaintenanceStatusDto>>), 200)]
-    public async Task<IActionResult> GetMaintenanceStatus(
+    public async Task<IActionResult> GetTrangThaiBaoTri(
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("API: Checking maintenance status for all vehicles");
+        _logger.LogInformation("API: Kiểm tra trạng thái bảo trì tất cả xe");
 
         var result = await _maintenanceService.GetMaintenanceStatusAsync(cancellationToken);
         return Ok(result);
@@ -67,7 +68,7 @@ public class MaintenanceController : ControllerBase
     /// 
     /// Sample request:
     /// 
-    ///     POST /api/Maintenance
+    ///     POST /api/bao-tri
     ///     {
     ///         "maBaoTri": "BT001",
     ///         "maXe": "XE001",
@@ -80,11 +81,11 @@ public class MaintenanceController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(BaseResponse<object>), 200)]
     [ProducesResponseType(typeof(BaseResponse<object>), 400)]
-    public async Task<IActionResult> CreateMaintenance(
+    public async Task<IActionResult> ThemBaoTri(
         [FromBody] MaintenanceCreateRequest request,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("API: Creating maintenance for vehicle {MaXe}", request.MaXe);
+        _logger.LogInformation("API: Thêm bảo trì cho xe {MaXe}", request.MaXe);
 
         var result = await _maintenanceService.CreateMaintenanceAsync(request, cancellationToken);
 
@@ -94,9 +95,9 @@ public class MaintenanceController : ControllerBase
     /// <summary>
     /// Lấy lịch sử bảo trì của xe.
     /// </summary>
-    [HttpGet("history/{maXe}")]
+    [HttpGet("lich-su/{maXe}")]
     [ProducesResponseType(typeof(BaseResponse<List<BaoTriDto>>), 200)]
-    public async Task<IActionResult> GetMaintenanceHistory(
+    public async Task<IActionResult> GetLichSuBaoTri(
         [FromRoute] string maXe,
         CancellationToken cancellationToken = default)
     {

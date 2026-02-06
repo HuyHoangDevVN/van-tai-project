@@ -60,26 +60,22 @@ builder.Services.AddSingleton<IProcedureConfigProvider, ProcedureConfigProvider>
 builder.Services.AddScoped<IProductService, ProductService>();
 
 // -----------------------------------------------------------------------------
-// VanTai (Transportation) Services - Existing
-// Register all VanTai services for the transport management system
+// VanTai (Transportation) Services
+// Entity CRUD Services with integrated business operations
 // -----------------------------------------------------------------------------
 builder.Services.AddScoped<IBaoCaoService, BaoCaoService>();
 builder.Services.AddScoped<ITaiXeService, TaiXeService>();
 builder.Services.AddScoped<IXeService, XeService>();
-builder.Services.AddScoped<IChuyenXeService, ChuyenXeService>();
+builder.Services.AddScoped<IChuyenXeService, ChuyenXeService>();  // Includes: HoanThanhAsync, HuyChuyen
 builder.Services.AddScoped<IKhachHangService, KhachHangService>();
 builder.Services.AddScoped<ITuyenDuongService, TuyenDuongService>();
-builder.Services.AddScoped<IVeService, VeService>();
-
-// -----------------------------------------------------------------------------
-// VanTai (Transportation) Services - New Modules with Dynamic SP Resolution
-// These services inherit from BaseService and use IProcedureConfigProvider
-// for dynamic stored procedure name resolution
-// -----------------------------------------------------------------------------
+builder.Services.AddScoped<IVeService, VeService>();              // Includes: DatVeAsync, HuyVeAsync, GetByChuyenAsync
 builder.Services.AddScoped<IMaintenanceService, MaintenanceService>();
-builder.Services.AddScoped<ITripService, TripService>();
-builder.Services.AddScoped<ITicketService, TicketService>();
-builder.Services.AddScoped<ISearchService, SearchService>();
+
+// NOTE: Removed duplicate services:
+// - ITripService, TripService (merged into IChuyenXeService)
+// - ITicketService, TicketService (merged into IVeService)
+// - ISearchService, SearchService (duplicate of entity search endpoints)
 
 // -----------------------------------------------------------------------------
 // ASP.NET Core MVC/API Services
@@ -177,7 +173,7 @@ if (enableSwagger)
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Product Management API v1");
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Quản Lý Vận Tải API v1");
         options.RoutePrefix = "swagger"; // Swagger at /swagger URL
     });
 }
@@ -214,8 +210,8 @@ app.MapHealthChecks("/health");
 // RUN APPLICATION
 // =============================================================================
 
-app.Logger.LogInformation("Starting Product Management API...");
+app.Logger.LogInformation("Starting Quản Lý Vận Tải API...");
 app.Logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
-app.Logger.LogInformation("Swagger UI: {Url}", app.Environment.IsDevelopment() ? "https://localhost:5001" : "Disabled in production");
+app.Logger.LogInformation("Swagger UI: {Url}", enableSwagger ? "/swagger" : "Disabled");
 
 app.Run();
