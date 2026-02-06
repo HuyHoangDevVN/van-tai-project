@@ -768,12 +768,11 @@ public class VeService : BaseService, IVeService
 
         try
         {
+            // Build entity-specific filter parameters matching proc_tim_kiem_ve
             var additionalParams = new[]
             {
-                SqlParamModel.Input("p_ma_khach", NullIfEmpty(request.MaKhach)),
-                SqlParamModel.Input("p_ma_chuyen", NullIfEmpty(request.MaChuyen)),
-                SqlParamModel.Input("p_trang_thai_tt", NullIfEmpty(request.TrangThaiTT)),
-                SqlParamModel.Input("p_phuong_thuc_tt", NullIfEmpty(request.PhuongThucTT))
+                SqlParamModel.Input("p_trang_thai", NullIfEmpty(request.TrangThaiTT)),
+                SqlParamModel.Input("p_ma_chuyen", NullIfEmpty(request.MaChuyen))
             };
 
             return await ExecutePagedSearchAsync<TicketSearchResultDto>(

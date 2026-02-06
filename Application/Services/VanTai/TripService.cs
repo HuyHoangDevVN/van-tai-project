@@ -72,17 +72,34 @@ public class TripService : BaseService, ITripService
             // 1. Dynamic SP resolution
             string spName = await GetProcNameAsync(FunctionKeys.Trip.SEARCH);
 
-            // 2. Build model with nullable parameters for universal search
+            // 2. Build model with correct parameter names matching proc_tim_kiem_chuyen_xe
+            // SP Parameters:
+            //   IN p_keyword VARCHAR(200)
+            //   IN p_trang_thai VARCHAR(30)
+            //   IN p_ma_tuyen VARCHAR(20)
+            //   IN p_tu_ngay DATETIME
+            //   IN p_den_ngay DATETIME
+            //   IN p_offset INT
+            //   IN p_limit INT
+            //   IN p_sort_by VARCHAR(50)
+            //   IN p_sort_desc INT
+            //   OUT p_total_record BIGINT
             var model = new SqlExecuteModel(spName)
             {
                 IsStoredProcedure = true,
                 Params =
                 [
                     // Nullable parameters - SP handles NULL with WHERE logic
-                    SqlParamModel.Input("p_keyword", string.IsNullOrEmpty(request.Keyword) ? null : request.Keyword),
-                    SqlParamModel.Input("p_trang_thai", string.IsNullOrEmpty(request.TrangThai) ? null : request.TrangThai),
-                    SqlParamModel.Input("p_date_from", request.DateFrom),
-                    SqlParamModel.Input("p_date_to", request.DateTo)
+                    SqlParamModel.Input("p_keyword", NullIfEmpty(request.Keyword)),
+                    SqlParamModel.Input("p_trang_thai", NullIfEmpty(request.TrangThai)),
+                    SqlParamModel.Input("p_ma_tuyen", null), // No route filter in this request
+                    SqlParamModel.Input("p_tu_ngay", request.DateFrom),
+                    SqlParamModel.Input("p_den_ngay", request.DateTo),
+                    SqlParamModel.Input("p_offset", 0),
+                    SqlParamModel.Input("p_limit", 1000), // Default limit
+                    SqlParamModel.Input("p_sort_by", null),
+                    SqlParamModel.Input("p_sort_desc", 0),
+                    SqlParamModel.Output("p_total_record", MySqlConnector.MySqlDbType.Int64)
                 ]
             };
 

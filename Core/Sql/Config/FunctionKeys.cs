@@ -4,7 +4,8 @@ namespace Core.Sql.Config;
 /// Static class containing all function keys used in the application.
 /// Use these constants instead of hardcoded strings for type safety and IntelliSense support.
 /// 
-/// Naming Convention: MODULE_ACTION
+/// Naming Convention: proc_hanh_dong_voi_cai_gi
+/// Example: proc_tinh_chi_phi_co_ban
 /// </summary>
 public static class FunctionKeys
 {
@@ -13,15 +14,15 @@ public static class FunctionKeys
     // =========================================================================
     public static class Report
     {
-        public const string CHI_PHI_CO_BAN = "REPORT_CHI_PHI_CO_BAN";
-        public const string DOANH_THU_XE_BUS_NGOI = "REPORT_DOANH_THU_XE_BUS_NGOI";
-        public const string DOANH_THU_XE_BUS_NGOI_THANG = "REPORT_DOANH_THU_XE_BUS_NGOI_THANG";
-        public const string GIA_VE_XE_BUS_NGOI = "REPORT_GIA_VE_XE_BUS_NGOI";
-        public const string DOANH_THU_TUYEN_DUONG = "REPORT_DOANH_THU_TUYEN_DUONG";
-        public const string DOANH_THU_TUYEN_DUONG_THANG = "REPORT_DOANH_THU_TUYEN_DUONG_THANG";
-        public const string LUONG_THANG_TAI_XE = "REPORT_LUONG_THANG_TAI_XE";
-        public const string TUYEN_DUONG_XE_GIUONG_NAM = "REPORT_TUYEN_DUONG_XE_GIUONG_NAM";
-        public const string KHACH_HANG_QUAY_LAI = "REPORT_KHACH_HANG_QUAY_LAI";
+        public const string CHI_PHI_CO_BAN = "proc_tinh_chi_phi_co_ban";
+        public const string DOANH_THU_XE_BUS_NGOI = "proc_tinh_doanh_thu_xe_bus_ngoi";
+        public const string DOANH_THU_XE_BUS_NGOI_THANG = "proc_tinh_doanh_thu_xe_bus_ngoi_thang";
+        public const string GIA_VE_XE_BUS_NGOI = "proc_tinh_gia_ve_xe_bus_ngoi";
+        public const string DOANH_THU_TUYEN_DUONG = "proc_tinh_doanh_thu_tuyen_duong";
+        public const string DOANH_THU_TUYEN_DUONG_THANG = "proc_tinh_doanh_thu_tuyen_duong_thang";
+        public const string LUONG_THANG_TAI_XE = "proc_tinh_luong_thang_tai_xe";
+        public const string TUYEN_DUONG_XE_GIUONG_NAM = "proc_lay_tuyen_duong_xe_giuong_nam";
+        public const string KHACH_HANG_QUAY_LAI = "proc_lay_khach_hang_quay_lai";
     }
 
     // =========================================================================
@@ -29,10 +30,10 @@ public static class FunctionKeys
     // =========================================================================
     public static class Maintenance
     {
-        public const string STATUS_CHECK = "MAINTENANCE_STATUS_CHECK";
-        public const string CREATE = "MAINTENANCE_CREATE";
-        public const string GET_HISTORY = "MAINTENANCE_GET_HISTORY";
-        public const string UPDATE = "MAINTENANCE_UPDATE";
+        public const string STATUS_CHECK = "proc_kiem_tra_trang_thai_bao_tri";
+        public const string CREATE = "proc_tao_bao_tri";
+        public const string GET_HISTORY = "proc_lay_lich_su_bao_tri";
+        public const string UPDATE = "proc_cap_nhat_bao_tri";
     }
 
     // =========================================================================
@@ -40,12 +41,12 @@ public static class FunctionKeys
     // =========================================================================
     public static class Bus
     {
-        public const string SEARCH = "BUS_SEARCH";
-        public const string GET_BY_ID = "BUS_GET_BY_ID";
-        public const string CREATE = "BUS_CREATE";
-        public const string UPDATE = "BUS_UPDATE";
-        public const string DELETE = "BUS_DELETE";
-        public const string GET_AVAILABLE = "BUS_GET_AVAILABLE";
+        public const string SEARCH = "proc_tim_kiem_xe";
+        public const string GET_BY_ID = "proc_lay_xe_theo_id";
+        public const string CREATE = "proc_tao_xe";
+        public const string UPDATE = "proc_cap_nhat_xe";
+        public const string DELETE = "proc_xoa_xe";
+        public const string GET_AVAILABLE = "proc_lay_xe_san_sang";
     }
 
     // =========================================================================
@@ -53,12 +54,12 @@ public static class FunctionKeys
     // =========================================================================
     public static class Driver
     {
-        public const string SEARCH = "DRIVER_SEARCH";
-        public const string GET_BY_ID = "DRIVER_GET_BY_ID";
-        public const string CREATE = "DRIVER_CREATE";
-        public const string UPDATE = "DRIVER_UPDATE";
-        public const string DELETE = "DRIVER_DELETE";
-        public const string GET_AVAILABLE = "DRIVER_GET_AVAILABLE";
+        public const string SEARCH = "proc_tim_kiem_tai_xe";
+        public const string GET_BY_ID = "proc_lay_tai_xe_theo_id";
+        public const string CREATE = "proc_tao_tai_xe";
+        public const string UPDATE = "proc_cap_nhat_tai_xe";
+        public const string DELETE = "proc_xoa_tai_xe";
+        public const string GET_AVAILABLE = "proc_lay_tai_xe_san_sang";
     }
 
     // =========================================================================
@@ -66,11 +67,11 @@ public static class FunctionKeys
     // =========================================================================
     public static class Route
     {
-        public const string SEARCH = "ROUTE_SEARCH";
-        public const string GET_BY_ID = "ROUTE_GET_BY_ID";
-        public const string CREATE = "ROUTE_CREATE";
-        public const string UPDATE = "ROUTE_UPDATE";
-        public const string DELETE = "ROUTE_DELETE";
+        public const string SEARCH = "proc_tim_kiem_tuyen_duong";
+        public const string GET_BY_ID = "proc_lay_tuyen_duong_theo_id";
+        public const string CREATE = "proc_tao_tuyen_duong";
+        public const string UPDATE = "proc_cap_nhat_tuyen_duong";
+        public const string DELETE = "proc_xoa_tuyen_duong";
     }
 
     // =========================================================================
@@ -78,13 +79,13 @@ public static class FunctionKeys
     // =========================================================================
     public static class Trip
     {
-        public const string SEARCH = "TRIP_SEARCH";
-        public const string GET_BY_ID = "TRIP_GET_BY_ID";
-        public const string CREATE = "TRIP_CREATE";
-        public const string UPDATE = "TRIP_UPDATE";
-        public const string DELETE = "TRIP_DELETE";
-        public const string COMPLETE = "TRIP_COMPLETE";
-        public const string GET_BY_STATUS = "TRIP_GET_BY_STATUS";
+        public const string SEARCH = "proc_tim_kiem_chuyen_xe";
+        public const string GET_BY_ID = "proc_lay_chuyen_xe_theo_id";
+        public const string CREATE = "proc_tao_chuyen_xe";
+        public const string UPDATE = "proc_cap_nhat_chuyen_xe";
+        public const string DELETE = "proc_xoa_chuyen_xe";
+        public const string COMPLETE = "proc_hoan_thanh_chuyen_xe";
+        public const string GET_BY_STATUS = "proc_lay_chuyen_xe_theo_trang_thai";
     }
 
     // =========================================================================
@@ -92,12 +93,12 @@ public static class FunctionKeys
     // =========================================================================
     public static class Ticket
     {
-        public const string SEARCH = "TICKET_SEARCH";
-        public const string GET_BY_ID = "TICKET_GET_BY_ID";
-        public const string BOOK = "TICKET_BOOK";
-        public const string CANCEL = "TICKET_CANCEL";
-        public const string GET_BY_TRIP = "TICKET_GET_BY_TRIP";
-        public const string UPDATE_STATUS = "TICKET_UPDATE_STATUS";
+        public const string SEARCH = "proc_tim_kiem_ve";
+        public const string GET_BY_ID = "proc_lay_ve_theo_id";
+        public const string BOOK = "proc_dat_ve";
+        public const string CANCEL = "proc_huy_ve";
+        public const string GET_BY_TRIP = "proc_lay_ve_theo_chuyen";
+        public const string UPDATE_STATUS = "proc_cap_nhat_trang_thai_ve";
     }
 
     // =========================================================================
@@ -105,9 +106,9 @@ public static class FunctionKeys
     // =========================================================================
     public static class Customer
     {
-        public const string SEARCH = "CUSTOMER_SEARCH";
-        public const string GET_BY_ID = "CUSTOMER_GET_BY_ID";
-        public const string CREATE = "CUSTOMER_CREATE";
-        public const string UPDATE = "CUSTOMER_UPDATE";
+        public const string SEARCH = "proc_tim_kiem_khach_hang";
+        public const string GET_BY_ID = "proc_lay_khach_hang_theo_id";
+        public const string CREATE = "proc_tao_khach_hang";
+        public const string UPDATE = "proc_cap_nhat_khach_hang";
     }
 }
