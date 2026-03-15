@@ -189,13 +189,12 @@ if (!enableSwagger)
 {
     app.UseHttpsRedirection();
 }
-;
-
-// CORS
-app.UseCors("AllowAll");
 
 // Routing
 app.UseRouting();
+
+// CORS - phải đặt sau UseRouting và trước UseAuthorization
+app.UseCors("AllowAll");
 
 // Authorization (if needed in future)
 app.UseAuthorization();

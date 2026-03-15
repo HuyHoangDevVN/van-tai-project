@@ -10,8 +10,9 @@ public static class SqlConstants
 
     /// <summary>
     /// Standard output parameter name for total record count in paging operations.
+    /// IMPORTANT: Must match the SP parameter name convention (snake_case).
     /// </summary>
-    public const string P_TotalRecord = "p_TotalRecord";
+    public const string P_TotalRecord = "p_total_record";
 
     /// <summary>
     /// Standard output parameter name for response/status code.

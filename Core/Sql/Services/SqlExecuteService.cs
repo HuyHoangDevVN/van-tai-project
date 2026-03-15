@@ -65,13 +65,25 @@ public class SqlExecuteService : ISqlExecuteService
 
             await using var command = CreateCommand(connection, model);
 
-            // Add paging parameters
-            command.Parameters.AddWithValue("@p_PageIndex", pageIndex);
-            command.Parameters.AddWithValue("@p_PageSize", pageSize);
-
-            // Add output parameter for total records
-            var totalRecordParam = command.Parameters.Add(SqlConstants.P_TotalRecord, MySqlDbType.Int64);
-            totalRecordParam.Direction = ParameterDirection.Output;
+            // Check if paging parameters already exist in model (from BuildBaseSearchParams)
+            // Only add if not already present to avoid duplicate parameters
+            var normalizedTotalRecordParamName = SqlConstants.P_TotalRecord.StartsWith("@") 
+                ? SqlConstants.P_TotalRecord 
+                : $"@{SqlConstants.P_TotalRecord}";
+            
+            // Check if p_total_record output parameter already exists
+            MySqlParameter? totalRecordParam = null;
+            if (command.Parameters.Contains(normalizedTotalRecordParamName))
+            {
+                // Use existing parameter from model
+                totalRecordParam = command.Parameters[normalizedTotalRecordParamName];
+            }
+            else
+            {
+                // Add output parameter for total records if not present
+                totalRecordParam = command.Parameters.Add(normalizedTotalRecordParamName, MySqlDbType.Int64);
+                totalRecordParam.Direction = ParameterDirection.Output;
+            }
 
             // Execute and fill DataSet
             using var adapter = new MySqlDataAdapter(command);
