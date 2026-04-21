@@ -1,5 +1,7 @@
 using Application.Services;
 using Application.Services.VanTai;
+using Api.HostedServices;
+using Api.Security;
 using Core.Sql;
 using Core.Sql.Config;
 using Microsoft.OpenApi.Models;
@@ -134,6 +136,8 @@ builder.Services.AddCors(options =>
 // Health Checks (optional but recommended)
 // -----------------------------------------------------------------------------
 builder.Services.AddHealthChecks();
+builder.Services.Configure<AdminAccessOptions>(builder.Configuration.GetSection("AdminAccess"));
+builder.Services.AddHostedService<MaintenanceAlertJob>();
 
 // =============================================================================
 // LOGGING CONFIGURATION
@@ -179,8 +183,20 @@ if (enableSwagger)
 }
 else
 {
-    // Production error handling
-    app.UseExceptionHandler("/error");
+    app.UseExceptionHandler(handler =>
+    {
+        handler.Run(async context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/json";
+
+            var response = Core.Sql.Models.BaseResponse<object>.Error(
+                "Có lỗi nội bộ xảy ra. Vui lòng thử lại sau.",
+                StatusCodes.Status500InternalServerError);
+
+            await context.Response.WriteAsJsonAsync(response);
+        });
+    });
     app.UseHsts();
 }
 
@@ -192,6 +208,76 @@ if (!enableSwagger)
 
 // Routing
 app.UseRouting();
+
+app.Use(async (context, next) =>
+{
+    var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("RequestLogging");
+
+    logger.LogInformation(
+        "HTTP {Method} {Path} started",
+        context.Request.Method,
+        context.Request.Path);
+
+    await next();
+
+    logger.LogInformation(
+        "HTTP {Method} {Path} completed with {StatusCode}",
+        context.Request.Method,
+        context.Request.Path,
+        context.Response.StatusCode);
+});
+
+app.Use(async (context, next) =>
+{
+    var options = context.RequestServices.GetRequiredService<
+        Microsoft.Extensions.Options.IOptions<AdminAccessOptions>>().Value;
+
+    if (!options.Enabled)
+    {
+        await next();
+        return;
+    }
+
+    var path = context.Request.Path.Value ?? string.Empty;
+    var isWriteMethod = HttpMethods.IsPost(context.Request.Method) ||
+                        HttpMethods.IsPut(context.Request.Method) ||
+                        HttpMethods.IsDelete(context.Request.Method) ||
+                        HttpMethods.IsPatch(context.Request.Method);
+
+    var requiresAdmin =
+        path.StartsWith("/api/baocao", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/bao-tri", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/tai-xe", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/xe", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/khach-hang", StringComparison.OrdinalIgnoreCase) ||
+        (path.StartsWith("/api/tuyen-duong", StringComparison.OrdinalIgnoreCase) && isWriteMethod) ||
+        (path.StartsWith("/api/chuyen-xe", StringComparison.OrdinalIgnoreCase) && isWriteMethod);
+
+    if (!requiresAdmin)
+    {
+        await next();
+        return;
+    }
+
+    var role = context.Request.Headers[options.RoleHeaderName].FirstOrDefault();
+    var apiKey = context.Request.Headers[options.ApiKeyHeaderName].FirstOrDefault();
+    var hasAdminRole = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+    var hasValidApiKey = !string.IsNullOrWhiteSpace(options.ApiKey) &&
+                         string.Equals(apiKey, options.ApiKey, StringComparison.Ordinal);
+
+    if (hasAdminRole || hasValidApiKey)
+    {
+        await next();
+        return;
+    }
+
+    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+    await context.Response.WriteAsJsonAsync(
+        Core.Sql.Models.BaseResponse<object>.Error(
+            "Bạn không có quyền truy cập chức năng quản trị.",
+            StatusCodes.Status403Forbidden));
+});
 
 // CORS - phải đặt sau UseRouting và trước UseAuthorization
 app.UseCors("AllowAll");

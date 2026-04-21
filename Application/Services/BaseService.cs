@@ -331,4 +331,53 @@ public abstract class BaseService
         // Log attempted invalid column (potential injection attempt)
         return null;
     }
+
+    protected async Task<bool> RecordExistsAsync(
+        string tableName,
+        string keyColumn,
+        object value,
+        CancellationToken cancellationToken = default)
+    {
+        var query = SqlExecuteModel.RawQuery(
+                $"SELECT {keyColumn} AS value FROM {tableName} WHERE {keyColumn} = @value LIMIT 1")
+            .AddInput("value", value);
+
+        var result = await SqlService.ExecuteSqlRawCommandAsync<LookupDto>(query, cancellationToken);
+        return result.Success && result.Data?.Count > 0;
+    }
+
+    protected async Task<bool> HasDuplicateAsync(
+        string tableName,
+        string valueColumn,
+        object value,
+        string? keyColumn = null,
+        object? excludeKeyValue = null,
+        CancellationToken cancellationToken = default)
+    {
+        var sql = $"SELECT {valueColumn} AS value FROM {tableName} WHERE {valueColumn} = @value";
+
+        if (!string.IsNullOrWhiteSpace(keyColumn) && excludeKeyValue != null)
+        {
+            sql += $" AND {keyColumn} <> @exclude_key";
+        }
+
+        sql += " LIMIT 1";
+
+        var query = SqlExecuteModel.RawQuery(sql)
+            .AddInput("value", value);
+
+        if (!string.IsNullOrWhiteSpace(keyColumn) && excludeKeyValue != null)
+        {
+            query.AddInput("exclude_key", excludeKeyValue);
+        }
+
+        var result = await SqlService.ExecuteSqlRawCommandAsync<LookupDto>(query, cancellationToken);
+        return result.Success && result.Data?.Count > 0;
+    }
+
+    protected sealed class LookupDto
+    {
+        [CustomDataSet("value")]
+        public string? Value { get; set; }
+    }
 }

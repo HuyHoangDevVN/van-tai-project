@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS maintenance_alerts (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    ma_xe VARCHAR(20) NOT NULL,
+    alert_type VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    severity VARCHAR(20) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message_snapshot VARCHAR(500) NOT NULL,
+    due_date DATE NULL,
+    triggered_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at DATETIME NULL,
+    resolved_by VARCHAR(100) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_maintenance_alert_active (ma_xe, alert_type, status),
+    KEY idx_maintenance_alert_status (status),
+    KEY idx_maintenance_alert_vehicle (ma_xe),
+    CONSTRAINT fk_maintenance_alert_vehicle FOREIGN KEY (ma_xe) REFERENCES xe(ma_xe)
+);

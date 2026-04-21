@@ -29,6 +29,9 @@ public class MaintenanceStatusDto
     [CustomDataSet("ngay_bao_tri_cuoi")]
     public DateTime? NgayBaoTriCuoi { get; set; }
 
+    [CustomDataSet("ngay_dang_kiem")]
+    public DateTime? NgayDangKiem { get; set; }
+
     [CustomDataSet("so_ngay_tu_bao_tri")]
     public int SoNgayTuBaoTri { get; set; }
 
@@ -37,6 +40,82 @@ public class MaintenanceStatusDto
 
     [CustomDataSet("can_bao_tri")]
     public bool CanBaoTri { get; set; }
+
+    public DateTime? NgayBaoTriTiepTheo { get; set; }
+
+    public int? SoNgayConLai { get; set; }
+
+    public int? SoNgayDenDangKiem { get; set; }
+
+    public string? TrangThaiDangKiem { get; set; }
+}
+
+public class MaintenanceAlertDto
+{
+    [CustomDataSet("id")]
+    public long Id { get; set; }
+
+    [CustomDataSet("ma_xe")]
+    public string MaXe { get; set; } = string.Empty;
+
+    [CustomDataSet("ten_xe")]
+    public string? TenXe { get; set; }
+
+    [CustomDataSet("bien_so")]
+    public string? BienSo { get; set; }
+
+    [CustomDataSet("alert_type")]
+    public string AlertType { get; set; } = string.Empty;
+
+    [CustomDataSet("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [CustomDataSet("severity")]
+    public string Severity { get; set; } = string.Empty;
+
+    [CustomDataSet("title")]
+    public string Title { get; set; } = string.Empty;
+
+    [CustomDataSet("message_snapshot")]
+    public string MessageSnapshot { get; set; } = string.Empty;
+
+    [CustomDataSet("due_date")]
+    public DateTime? DueDate { get; set; }
+
+    [CustomDataSet("triggered_at")]
+    public DateTime TriggeredAt { get; set; }
+
+    [CustomDataSet("last_seen_at")]
+    public DateTime LastSeenAt { get; set; }
+
+    [CustomDataSet("resolved_at")]
+    public DateTime? ResolvedAt { get; set; }
+
+    [CustomDataSet("resolved_by")]
+    public string? ResolvedBy { get; set; }
+}
+
+public class MaintenanceAlertScanResultDto
+{
+    public int TotalEvaluated { get; set; }
+
+    public int ActiveAlerts { get; set; }
+
+    public int ResolvedAlerts { get; set; }
+}
+
+public class MaintenanceAlertQuery
+{
+    public string? Status { get; set; }
+
+    public string? Severity { get; set; }
+
+    public string? MaXe { get; set; }
+}
+
+public class ResolveMaintenanceAlertRequest
+{
+    public string? ResolvedBy { get; set; }
 }
 
 // =============================================================================

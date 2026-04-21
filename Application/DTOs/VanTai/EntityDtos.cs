@@ -113,6 +113,18 @@ public class ChuyenXeDto
 
     [CustomDataSet("ma_tuyen")]
     public string? MaTuyen { get; set; }
+
+    [CustomDataSet("trang_thai")]
+    public string? TrangThai { get; set; }
+
+    [CustomDataSet("ten_xe")]
+    public string? TenXe { get; set; }
+
+    [CustomDataSet("bien_so")]
+    public string? BienSo { get; set; }
+
+    [CustomDataSet("ten_tuyen")]
+    public string? TenTuyen { get; set; }
 }
 
 // =============================================================================

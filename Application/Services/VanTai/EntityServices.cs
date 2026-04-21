@@ -1,4 +1,4 @@
-using Application.DTOs.VanTai;
+﻿using Application.DTOs.VanTai;
 using Application.Models;
 using Core.Sql.Config;
 using Core.Sql.Models;
@@ -93,7 +93,7 @@ public class TaiXeService : BaseService, ITaiXeService
                 var item = result.Data?.FirstOrDefault();
                 return item != null
                     ? BaseResponse<TaiXeDto?>.Ok(item)
-                    : BaseResponse<TaiXeDto?>.NotFound($"Không tìm thấy tài xế với mã {maTaiXe}");
+                    : BaseResponse<TaiXeDto?>.NotFound($"KhĂ´ng tĂ¬m tháº¥y tĂ i xáº¿ vá»›i mĂ£ {maTaiXe}");
             }
 
             return BaseResponse<TaiXeDto?>.Error(result.Message, result.ErrorCode);
@@ -130,7 +130,7 @@ public class TaiXeService : BaseService, ITaiXeService
             var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
             return result.Success
-                ? BaseResponse<object>.Ok("Thêm tài xế thành công")
+                ? BaseResponse<object>.Ok("ThĂªm tĂ i xáº¿ thĂ nh cĂ´ng")
                 : BaseResponse<object>.Error(result.Message, result.ErrorCode);
         }
         catch (Exception ex)
@@ -173,11 +173,11 @@ public class TaiXeService : BaseService, ITaiXeService
 
             if (result.Success && result.Data == 0)
             {
-                return BaseResponse<object>.NotFound($"Không tìm thấy tài xế với mã {maTaiXe}");
+                return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y tĂ i xáº¿ vá»›i mĂ£ {maTaiXe}");
             }
 
             return result.Success
-                ? BaseResponse<object>.Ok("Cập nhật tài xế thành công")
+                ? BaseResponse<object>.Ok("Cáº­p nháº­t tĂ i xáº¿ thĂ nh cĂ´ng")
                 : BaseResponse<object>.Error(result.Message, result.ErrorCode);
         }
         catch (Exception ex)
@@ -200,11 +200,11 @@ public class TaiXeService : BaseService, ITaiXeService
 
             if (result.Success && result.Data == 0)
             {
-                return BaseResponse<object>.NotFound($"Không tìm thấy tài xế với mã {maTaiXe}");
+                return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y tĂ i xáº¿ vá»›i mĂ£ {maTaiXe}");
             }
 
             return result.Success
-                ? BaseResponse<object>.Ok("Xóa tài xế thành công")
+                ? BaseResponse<object>.Ok("XĂ³a tĂ i xáº¿ thĂ nh cĂ´ng")
                 : BaseResponse<object>.Error(result.Message, result.ErrorCode);
         }
         catch (Exception ex)
@@ -283,7 +283,7 @@ public class XeService : BaseService, IXeService
             var item = result.Data?.FirstOrDefault();
             return item != null
                 ? BaseResponse<XeDto?>.Ok(item)
-                : BaseResponse<XeDto?>.NotFound($"Không tìm thấy xe với mã {maXe}");
+                : BaseResponse<XeDto?>.NotFound($"KhĂ´ng tĂ¬m tháº¥y xe vá»›i mĂ£ {maXe}");
         }
 
         return BaseResponse<XeDto?>.Error(result.Message, result.ErrorCode);
@@ -291,6 +291,22 @@ public class XeService : BaseService, IXeService
 
     public async Task<BaseResponse<object>> CreateAsync(XeRequest request, CancellationToken cancellationToken = default)
     {
+        var validation = ValidateRequired<object>(request.MaXe, "Mã xe");
+        if (validation != null) return validation;
+
+        validation = ValidateRequired<object>(request.BienSo ?? string.Empty, "Biển số");
+        if (validation != null) return validation;
+
+        if (request.NgayDangKiem.HasValue && request.NgayDangKiem.Value.Date > DateTime.Today)
+        {
+            return BaseResponse<object>.ValidationError("Ngày đăng kiểm không được lớn hơn ngày hiện tại.");
+        }
+
+        if (await HasDuplicateAsync("xe", "bien_so", request.BienSo!, cancellationToken: cancellationToken))
+        {
+            return BaseResponse<object>.Duplicate("Biển số xe đã tồn tại.");
+        }
+
         var sqlModel = SqlExecuteModel.RawQuery(@"
             INSERT INTO xe (ma_xe, ten_xe, bien_so, hang_san_xuat, nam_san_xuat,
                 ngay_dang_kiem, trang_thai, muc_tieu_hao, phu_thu_phi_van_hanh)
@@ -308,12 +324,28 @@ public class XeService : BaseService, IXeService
 
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
         return result.Success
-            ? BaseResponse<object>.Ok("Thêm xe thành công")
+            ? BaseResponse<object>.Ok("ThĂªm xe thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
     public async Task<BaseResponse<object>> UpdateAsync(string maXe, XeRequest request, CancellationToken cancellationToken = default)
     {
+        var validation = ValidateRequired<object>(maXe, "Mã xe");
+        if (validation != null) return validation;
+
+        validation = ValidateRequired<object>(request.BienSo ?? string.Empty, "Biển số");
+        if (validation != null) return validation;
+
+        if (request.NgayDangKiem.HasValue && request.NgayDangKiem.Value.Date > DateTime.Today)
+        {
+            return BaseResponse<object>.ValidationError("Ngày đăng kiểm không được lớn hơn ngày hiện tại.");
+        }
+
+        if (await HasDuplicateAsync("xe", "bien_so", request.BienSo!, "ma_xe", maXe, cancellationToken))
+        {
+            return BaseResponse<object>.Duplicate("Biển số xe đã tồn tại.");
+        }
+
         var sqlModel = SqlExecuteModel.RawQuery(@"
             UPDATE xe SET 
                 ten_xe = @ten_xe, bien_so = @bien_so, hang_san_xuat = @hang_san_xuat,
@@ -334,10 +366,10 @@ public class XeService : BaseService, IXeService
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy xe với mã {maXe}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y xe vá»›i mĂ£ {maXe}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Cập nhật xe thành công")
+            ? BaseResponse<object>.Ok("Cáº­p nháº­t xe thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
@@ -349,17 +381,17 @@ public class XeService : BaseService, IXeService
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy xe với mã {maXe}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y xe vá»›i mĂ£ {maXe}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Xóa xe thành công")
+            ? BaseResponse<object>.Ok("XĂ³a xe thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 }
 
 /// <summary>
 /// Service implementation for ChuyenXe (Trip) entity.
-/// Includes business operations: Hoàn thành chuyến, Hủy chuyến.
+/// Includes business operations: HoĂ n thĂ nh chuyáº¿n, Há»§y chuyáº¿n.
 /// </summary>
 public class ChuyenXeService : BaseService, IChuyenXeService
 {
@@ -385,7 +417,7 @@ public class ChuyenXeService : BaseService, IChuyenXeService
         try
         {
             // Build entity-specific filter parameters matching proc_tim_kiem_chuyen_xe
-            // NOTE: Bảng chuyen_xe KHÔNG có cột trang_thai, chỉ filter theo ma_tuyen và ngày
+            // NOTE: Báº£ng chuyen_xe KHĂ”NG cĂ³ cá»™t trang_thai, chá»‰ filter theo ma_tuyen vĂ  ngĂ y
             var additionalParams = new[]
             {
                 SqlParamModel.Input("p_ma_tuyen", NullIfEmpty(request.MaTuyen)),
@@ -413,7 +445,16 @@ public class ChuyenXeService : BaseService, IChuyenXeService
 
     public async Task<BaseResponse<ChuyenXeDto?>> GetByIdAsync(string maChuyen, CancellationToken cancellationToken = default)
     {
-        var sqlModel = SqlExecuteModel.RawQuery("SELECT * FROM chuyen_xe WHERE ma_chuyen = @ma_chuyen")
+        var sqlModel = SqlExecuteModel.RawQuery(@"
+            SELECT 
+                cx.*,
+                x.ten_xe,
+                x.bien_so,
+                td.ten_tuyen
+            FROM chuyen_xe cx
+            LEFT JOIN xe x ON x.ma_xe = cx.ma_xe
+            LEFT JOIN tuyen_duong td ON td.ma_tuyen = cx.ma_tuyen
+            WHERE cx.ma_chuyen = @ma_chuyen")
             .AddInput("ma_chuyen", maChuyen);
 
         var result = await SqlService.ExecuteSqlRawCommandAsync<ChuyenXeDto>(sqlModel, cancellationToken);
@@ -423,7 +464,7 @@ public class ChuyenXeService : BaseService, IChuyenXeService
             var item = result.Data?.FirstOrDefault();
             return item != null
                 ? BaseResponse<ChuyenXeDto?>.Ok(item)
-                : BaseResponse<ChuyenXeDto?>.NotFound($"Không tìm thấy chuyến xe với mã {maChuyen}");
+                : BaseResponse<ChuyenXeDto?>.NotFound($"KhĂ´ng tĂ¬m tháº¥y chuyáº¿n xe vá»›i mĂ£ {maChuyen}");
         }
 
         return BaseResponse<ChuyenXeDto?>.Error(result.Message, result.ErrorCode);
@@ -431,9 +472,27 @@ public class ChuyenXeService : BaseService, IChuyenXeService
 
     public async Task<BaseResponse<object>> CreateAsync(ChuyenXeRequest request, CancellationToken cancellationToken = default)
     {
+        var validation = ValidateTripRequest(request);
+        if (validation != null) return validation;
+
+        if (!await RecordExistsAsync("xe", "ma_xe", request.MaXe!, cancellationToken))
+        {
+            return BaseResponse<object>.NotFound($"Không tìm thấy xe với mã {request.MaXe}.");
+        }
+
+        if (!await RecordExistsAsync("tuyen_duong", "ma_tuyen", request.MaTuyen!, cancellationToken))
+        {
+            return BaseResponse<object>.NotFound($"Không tìm thấy tuyến với mã {request.MaTuyen}.");
+        }
+
+        if (await HasVehicleOverlapAsync(request.MaXe!, request.ThoiGianKhoiHanh!.Value, request.ThoiGianDen!.Value, null, cancellationToken))
+        {
+            return BaseResponse<object>.ValidationError("Xe đang được xếp cho chuyến khác trong cùng khoảng thời gian.");
+        }
+
         var sqlModel = SqlExecuteModel.RawQuery(@"
-            INSERT INTO chuyen_xe (ma_chuyen, ten_chuyen, thoi_gian_khoi_hanh, thoi_gian_den, ma_xe, ma_tuyen)
-            VALUES (@ma_chuyen, @ten_chuyen, @thoi_gian_khoi_hanh, @thoi_gian_den, @ma_xe, @ma_tuyen)")
+            INSERT INTO chuyen_xe (ma_chuyen, ten_chuyen, thoi_gian_khoi_hanh, thoi_gian_den, ma_xe, ma_tuyen, trang_thai)
+            VALUES (@ma_chuyen, @ten_chuyen, @thoi_gian_khoi_hanh, @thoi_gian_den, @ma_xe, @ma_tuyen, 'Scheduled')")
             .AddInput("ma_chuyen", request.MaChuyen)
             .AddInput("ten_chuyen", request.TenChuyen)
             .AddInput("thoi_gian_khoi_hanh", request.ThoiGianKhoiHanh)
@@ -443,12 +502,42 @@ public class ChuyenXeService : BaseService, IChuyenXeService
 
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
         return result.Success
-            ? BaseResponse<object>.Ok("Thêm chuyến xe thành công")
+            ? BaseResponse<object>.Ok("ThĂªm chuyáº¿n xe thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
     public async Task<BaseResponse<object>> UpdateAsync(string maChuyen, ChuyenXeRequest request, CancellationToken cancellationToken = default)
     {
+        var validation = ValidateTripRequest(request);
+        if (validation != null) return validation;
+
+        var currentResult = await GetByIdAsync(maChuyen, cancellationToken);
+        if (!currentResult.Success || currentResult.Data == null)
+        {
+            return BaseResponse<object>.NotFound($"Không tìm thấy chuyến xe với mã {maChuyen}");
+        }
+
+        if (string.Equals(currentResult.Data.TrangThai, "Completed", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(currentResult.Data.TrangThai, "Cancelled", StringComparison.OrdinalIgnoreCase))
+        {
+            return BaseResponse<object>.ValidationError("Không thể cập nhật chuyến đã hoàn thành hoặc đã hủy.");
+        }
+
+        if (!await RecordExistsAsync("xe", "ma_xe", request.MaXe!, cancellationToken))
+        {
+            return BaseResponse<object>.NotFound($"Không tìm thấy xe với mã {request.MaXe}.");
+        }
+
+        if (!await RecordExistsAsync("tuyen_duong", "ma_tuyen", request.MaTuyen!, cancellationToken))
+        {
+            return BaseResponse<object>.NotFound($"Không tìm thấy tuyến với mã {request.MaTuyen}.");
+        }
+
+        if (await HasVehicleOverlapAsync(request.MaXe!, request.ThoiGianKhoiHanh!.Value, request.ThoiGianDen!.Value, maChuyen, cancellationToken))
+        {
+            return BaseResponse<object>.ValidationError("Xe đang được xếp cho chuyến khác trong cùng khoảng thời gian.");
+        }
+
         var sqlModel = SqlExecuteModel.RawQuery(@"
             UPDATE chuyen_xe SET 
                 ten_chuyen = @ten_chuyen, thoi_gian_khoi_hanh = @thoi_gian_khoi_hanh,
@@ -464,25 +553,32 @@ public class ChuyenXeService : BaseService, IChuyenXeService
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy chuyến xe với mã {maChuyen}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y chuyáº¿n xe vá»›i mĂ£ {maChuyen}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Cập nhật chuyến xe thành công")
+            ? BaseResponse<object>.Ok("Cáº­p nháº­t chuyáº¿n xe thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
     public async Task<BaseResponse<object>> DeleteAsync(string maChuyen, CancellationToken cancellationToken = default)
     {
+        var currentResult = await GetByIdAsync(maChuyen, cancellationToken);
+        if (currentResult.Success && currentResult.Data != null &&
+            string.Equals(currentResult.Data.TrangThai, "Completed", StringComparison.OrdinalIgnoreCase))
+        {
+            return BaseResponse<object>.ValidationError("Không thể xóa chuyến đã hoàn thành.");
+        }
+
         var sqlModel = SqlExecuteModel.RawQuery("DELETE FROM chuyen_xe WHERE ma_chuyen = @ma_chuyen")
             .AddInput("ma_chuyen", maChuyen);
 
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy chuyến xe với mã {maChuyen}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y chuyáº¿n xe vá»›i mĂ£ {maChuyen}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Xóa chuyến xe thành công")
+            ? BaseResponse<object>.Ok("XĂ³a chuyáº¿n xe thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
@@ -497,10 +593,10 @@ public class ChuyenXeService : BaseService, IChuyenXeService
     /// </remarks>
     public async Task<BaseResponse<object>> HoanThanhAsync(string maChuyen, CancellationToken cancellationToken = default)
     {
-        var validation = ValidateRequired<object>(maChuyen, "Mã chuyến");
+        var validation = ValidateRequired<object>(maChuyen, "MĂ£ chuyáº¿n");
         if (validation != null) return validation;
 
-        Logger.LogInformation("Hoàn thành chuyến: {MaChuyen} - Cập nhật km bảo trì cho xe", maChuyen);
+        Logger.LogInformation("HoĂ n thĂ nh chuyáº¿n: {MaChuyen} - Cáº­p nháº­t km báº£o trĂ¬ cho xe", maChuyen);
 
         try
         {
@@ -522,7 +618,7 @@ public class ChuyenXeService : BaseService, IChuyenXeService
             if (result.Success)
             {
                 Logger.LogInformation(
-                    "Chuyến {MaChuyen} hoàn thành. Dữ liệu bảo trì đã được cập nhật.", maChuyen);
+                    "Chuyáº¿n {MaChuyen} hoĂ n thĂ nh. Dá»¯ liá»‡u báº£o trĂ¬ Ä‘Ă£ Ä‘Æ°á»£c cáº­p nháº­t.", maChuyen);
             }
 
             return MapSpResponse(result);
@@ -536,10 +632,10 @@ public class ChuyenXeService : BaseService, IChuyenXeService
     /// <inheritdoc/>
     public async Task<BaseResponse<object>> HuyChuyen(string maChuyen, CancellationToken cancellationToken = default)
     {
-        var validation = ValidateRequired<object>(maChuyen, "Mã chuyến");
+        var validation = ValidateRequired<object>(maChuyen, "MĂ£ chuyáº¿n");
         if (validation != null) return validation;
 
-        Logger.LogInformation("Hủy chuyến: {MaChuyen}", maChuyen);
+        Logger.LogInformation("Há»§y chuyáº¿n: {MaChuyen}", maChuyen);
 
         try
         {
@@ -571,11 +667,11 @@ public class ChuyenXeService : BaseService, IChuyenXeService
                 if (result.Success && result.Data == 0)
                 {
                     return BaseResponse<object>.NotFound(
-                        "Không thể hủy chuyến. Chuyến không tồn tại hoặc đã ở trạng thái khác.");
+                        "KhĂ´ng thá»ƒ há»§y chuyáº¿n. Chuyáº¿n khĂ´ng tá»“n táº¡i hoáº·c Ä‘Ă£ á»Ÿ tráº¡ng thĂ¡i khĂ¡c.");
                 }
 
                 return result.Success
-                    ? BaseResponse<object>.Ok("Hủy chuyến thành công")
+                    ? BaseResponse<object>.Ok("Há»§y chuyáº¿n thĂ nh cĂ´ng")
                     : BaseResponse<object>.Error(result.Message);
             }
         }
@@ -583,6 +679,57 @@ public class ChuyenXeService : BaseService, IChuyenXeService
         {
             return HandleException<object>(ex, "HuyChuyen");
         }
+    }
+
+    private BaseResponse<object>? ValidateTripRequest(ChuyenXeRequest request)
+    {
+        var validation = ValidateRequired<object>(request.MaChuyen, "Mã chuyến");
+        if (validation != null) return validation;
+
+        validation = ValidateRequired<object>(request.MaXe ?? string.Empty, "Mã xe");
+        if (validation != null) return validation;
+
+        validation = ValidateRequired<object>(request.MaTuyen ?? string.Empty, "Mã tuyến");
+        if (validation != null) return validation;
+
+        if (!request.ThoiGianKhoiHanh.HasValue || !request.ThoiGianDen.HasValue)
+        {
+            return BaseResponse<object>.ValidationError("Thời gian khởi hành và đến là bắt buộc.");
+        }
+
+        if (request.ThoiGianKhoiHanh >= request.ThoiGianDen)
+        {
+            return BaseResponse<object>.ValidationError("Thời gian khởi hành phải trước thời gian đến.");
+        }
+
+        return null;
+    }
+
+    private async Task<bool> HasVehicleOverlapAsync(
+        string maXe,
+        DateTime start,
+        DateTime end,
+        string? excludeTripId,
+        CancellationToken cancellationToken)
+    {
+        var sql = @"
+            SELECT ma_chuyen AS value
+            FROM chuyen_xe
+            WHERE ma_xe = @ma_xe
+              AND (@exclude_trip IS NULL OR ma_chuyen <> @exclude_trip)
+              AND COALESCE(trang_thai, 'Scheduled') <> 'Cancelled'
+              AND @start < thoi_gian_den
+              AND @end > thoi_gian_khoi_hanh
+            LIMIT 1";
+
+        var query = SqlExecuteModel.RawQuery(sql)
+            .AddInput("ma_xe", maXe)
+            .AddInput("exclude_trip", excludeTripId)
+            .AddInput("start", start)
+            .AddInput("end", end);
+
+        var result = await SqlService.ExecuteSqlRawCommandAsync<LookupDto>(query, cancellationToken);
+        return result.Success && result.Data?.Count > 0;
     }
 }
 
@@ -649,7 +796,7 @@ public class KhachHangService : BaseService, IKhachHangService
             var item = result.Data?.FirstOrDefault();
             return item != null
                 ? BaseResponse<KhachHangDto?>.Ok(item)
-                : BaseResponse<KhachHangDto?>.NotFound($"Không tìm thấy khách hàng với mã {maKhach}");
+                : BaseResponse<KhachHangDto?>.NotFound($"KhĂ´ng tĂ¬m tháº¥y khĂ¡ch hĂ ng vá»›i mĂ£ {maKhach}");
         }
 
         return BaseResponse<KhachHangDto?>.Error(result.Message, result.ErrorCode);
@@ -670,7 +817,7 @@ public class KhachHangService : BaseService, IKhachHangService
 
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
         return result.Success
-            ? BaseResponse<object>.Ok("Thêm khách hàng thành công")
+            ? BaseResponse<object>.Ok("ThĂªm khĂ¡ch hĂ ng thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
@@ -692,10 +839,10 @@ public class KhachHangService : BaseService, IKhachHangService
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy khách hàng với mã {maKhach}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y khĂ¡ch hĂ ng vá»›i mĂ£ {maKhach}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Cập nhật khách hàng thành công")
+            ? BaseResponse<object>.Ok("Cáº­p nháº­t khĂ¡ch hĂ ng thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
@@ -707,10 +854,10 @@ public class KhachHangService : BaseService, IKhachHangService
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy khách hàng với mã {maKhach}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y khĂ¡ch hĂ ng vá»›i mĂ£ {maKhach}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Xóa khách hàng thành công")
+            ? BaseResponse<object>.Ok("XĂ³a khĂ¡ch hĂ ng thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 }
@@ -781,7 +928,7 @@ public class TuyenDuongService : BaseService, ITuyenDuongService
             var item = result.Data?.FirstOrDefault();
             return item != null
                 ? BaseResponse<TuyenDuongDto?>.Ok(item)
-                : BaseResponse<TuyenDuongDto?>.NotFound($"Không tìm thấy tuyến đường với mã {maTuyen}");
+                : BaseResponse<TuyenDuongDto?>.NotFound($"KhĂ´ng tĂ¬m tháº¥y tuyáº¿n Ä‘Æ°á»ng vá»›i mĂ£ {maTuyen}");
         }
 
         return BaseResponse<TuyenDuongDto?>.Error(result.Message, result.ErrorCode);
@@ -789,6 +936,19 @@ public class TuyenDuongService : BaseService, ITuyenDuongService
 
     public async Task<BaseResponse<object>> CreateAsync(TuyenDuongRequest request, CancellationToken cancellationToken = default)
     {
+        var validation = ValidateRequired<object>(request.MaTuyen, "Mã tuyến");
+        if (validation != null) return validation;
+
+        if (string.Equals(request.DiemDi?.Trim(), request.DiemDen?.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return BaseResponse<object>.ValidationError("Điểm đi và điểm đến không được trùng nhau.");
+        }
+
+        if (!request.KhoangCach.HasValue || request.KhoangCach <= 0)
+        {
+            return BaseResponse<object>.ValidationError("Khoảng cách phải lớn hơn 0.");
+        }
+
         var sqlModel = SqlExecuteModel.RawQuery(@"
             INSERT INTO tuyen_duong (ma_tuyen, diem_di, diem_den, khoang_cach, ten_tuyen, ma_do_phuc_tap)
             VALUES (@ma_tuyen, @diem_di, @diem_den, @khoang_cach, @ten_tuyen, @ma_do_phuc_tap)")
@@ -801,12 +961,22 @@ public class TuyenDuongService : BaseService, ITuyenDuongService
 
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
         return result.Success
-            ? BaseResponse<object>.Ok("Thêm tuyến đường thành công")
+            ? BaseResponse<object>.Ok("ThĂªm tuyáº¿n Ä‘Æ°á»ng thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
     public async Task<BaseResponse<object>> UpdateAsync(string maTuyen, TuyenDuongRequest request, CancellationToken cancellationToken = default)
     {
+        if (string.Equals(request.DiemDi?.Trim(), request.DiemDen?.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return BaseResponse<object>.ValidationError("Điểm đi và điểm đến không được trùng nhau.");
+        }
+
+        if (!request.KhoangCach.HasValue || request.KhoangCach <= 0)
+        {
+            return BaseResponse<object>.ValidationError("Khoảng cách phải lớn hơn 0.");
+        }
+
         var sqlModel = SqlExecuteModel.RawQuery(@"
             UPDATE tuyen_duong SET 
                 diem_di = @diem_di, diem_den = @diem_den, khoang_cach = @khoang_cach,
@@ -822,10 +992,10 @@ public class TuyenDuongService : BaseService, ITuyenDuongService
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy tuyến đường với mã {maTuyen}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y tuyáº¿n Ä‘Æ°á»ng vá»›i mĂ£ {maTuyen}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Cập nhật tuyến đường thành công")
+            ? BaseResponse<object>.Ok("Cáº­p nháº­t tuyáº¿n Ä‘Æ°á»ng thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
@@ -837,17 +1007,17 @@ public class TuyenDuongService : BaseService, ITuyenDuongService
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy tuyến đường với mã {maTuyen}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y tuyáº¿n Ä‘Æ°á»ng vá»›i mĂ£ {maTuyen}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Xóa tuyến đường thành công")
+            ? BaseResponse<object>.Ok("XĂ³a tuyáº¿n Ä‘Æ°á»ng thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 }
 
 /// <summary>
 /// Service implementation for Ve (Ticket) entity.
-/// Includes business operations: Đặt vé, Hủy vé.
+/// Includes business operations: Äáº·t vĂ©, Há»§y vĂ©.
 /// </summary>
 public class VeService : BaseService, IVeService
 {
@@ -911,7 +1081,7 @@ public class VeService : BaseService, IVeService
             var item = result.Data?.FirstOrDefault();
             return item != null
                 ? BaseResponse<VeDto?>.Ok(item)
-                : BaseResponse<VeDto?>.NotFound($"Không tìm thấy vé với STT {stt}");
+                : BaseResponse<VeDto?>.NotFound($"KhĂ´ng tĂ¬m tháº¥y vĂ© vá»›i STT {stt}");
         }
 
         return BaseResponse<VeDto?>.Error(result.Message, result.ErrorCode);
@@ -933,7 +1103,7 @@ public class VeService : BaseService, IVeService
 
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
         return result.Success
-            ? BaseResponse<object>.Ok("Đặt vé thành công")
+            ? BaseResponse<object>.Ok("Äáº·t vĂ© thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
@@ -956,10 +1126,10 @@ public class VeService : BaseService, IVeService
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy vé với STT {stt}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y vĂ© vá»›i STT {stt}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Cập nhật vé thành công")
+            ? BaseResponse<object>.Ok("Cáº­p nháº­t vĂ© thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
@@ -971,10 +1141,10 @@ public class VeService : BaseService, IVeService
         var result = await SqlService.ExecuteSqlRawNonQueryAsync(sqlModel, cancellationToken);
 
         if (result.Success && result.Data == 0)
-            return BaseResponse<object>.NotFound($"Không tìm thấy vé với STT {stt}");
+            return BaseResponse<object>.NotFound($"KhĂ´ng tĂ¬m tháº¥y vĂ© vá»›i STT {stt}");
 
         return result.Success
-            ? BaseResponse<object>.Ok("Xóa vé thành công")
+            ? BaseResponse<object>.Ok("XĂ³a vĂ© thĂ nh cĂ´ng")
             : BaseResponse<object>.Error(result.Message, result.ErrorCode);
     }
 
@@ -987,13 +1157,13 @@ public class VeService : BaseService, IVeService
     /// </remarks>
     public async Task<BaseResponse<int>> DatVeAsync(TicketBookingRequest request, CancellationToken cancellationToken = default)
     {
-        var validation = ValidateRequired<int>(request.MaKhach, "Mã khách hàng");
+        var validation = ValidateRequired<int>(request.MaKhach, "MĂ£ khĂ¡ch hĂ ng");
         if (validation != null) return validation;
 
-        validation = ValidateRequired<int>(request.MaChuyen, "Mã chuyến");
+        validation = ValidateRequired<int>(request.MaChuyen, "MĂ£ chuyáº¿n");
         if (validation != null) return validation;
 
-        Logger.LogInformation("Đặt vé cho khách: {MaKhach}, chuyến: {MaChuyen}",
+        Logger.LogInformation("Äáº·t vĂ© cho khĂ¡ch: {MaKhach}, chuyáº¿n: {MaChuyen}",
             request.MaKhach, request.MaChuyen);
 
         try
@@ -1021,7 +1191,7 @@ public class VeService : BaseService, IVeService
 
             if (result.Success)
             {
-                Logger.LogInformation("Đặt vé thành công cho chuyến {MaChuyen}", request.MaChuyen);
+                Logger.LogInformation("Äáº·t vĂ© thĂ nh cĂ´ng cho chuyáº¿n {MaChuyen}", request.MaChuyen);
                 return BaseResponse<int>.Ok(0, result.Message);
             }
 
@@ -1038,10 +1208,10 @@ public class VeService : BaseService, IVeService
     {
         if (stt <= 0)
         {
-            return BaseResponse<object>.ValidationError("Số thứ tự vé không hợp lệ.");
+            return BaseResponse<object>.ValidationError("Sá»‘ thá»© tá»± vĂ© khĂ´ng há»£p lá»‡.");
         }
 
-        Logger.LogInformation("Hủy vé: {Stt}", stt);
+        Logger.LogInformation("Há»§y vĂ©: {Stt}", stt);
 
         try
         {
@@ -1071,10 +1241,10 @@ public class VeService : BaseService, IVeService
     /// <inheritdoc/>
     public async Task<BaseResponse<List<VeDto>>> GetByChuyenAsync(string maChuyen, CancellationToken cancellationToken = default)
     {
-        var validation = ValidateRequired<List<VeDto>>(maChuyen, "Mã chuyến");
+        var validation = ValidateRequired<List<VeDto>>(maChuyen, "MĂ£ chuyáº¿n");
         if (validation != null) return validation;
 
-        Logger.LogInformation("Lấy danh sách vé theo chuyến: {MaChuyen}", maChuyen);
+        Logger.LogInformation("Láº¥y danh sĂ¡ch vĂ© theo chuyáº¿n: {MaChuyen}", maChuyen);
 
         try
         {
@@ -1105,3 +1275,4 @@ public class VeService : BaseService, IVeService
         }
     }
 }
+

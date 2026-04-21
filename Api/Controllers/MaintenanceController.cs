@@ -1,5 +1,6 @@
 using Application.DTOs.VanTai;
 using Application.Services.VanTai;
+using Api.Security;
 using Core.Sql.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,6 +17,7 @@ namespace Api.Controllers;
 [ApiController]
 [Route("api/bao-tri")]
 [Produces("application/json")]
+[RequireAdminAccess]
 public class BaoTriController : ControllerBase
 {
     private readonly IMaintenanceService _maintenanceService;
@@ -103,5 +105,38 @@ public class BaoTriController : ControllerBase
     {
         var result = await _maintenanceService.GetMaintenanceHistoryAsync(maXe, cancellationToken);
         return Ok(result);
+    }
+
+    [HttpGet("canh-bao")]
+    [ProducesResponseType(typeof(BaseResponse<List<MaintenanceAlertDto>>), 200)]
+    public async Task<IActionResult> GetAlerts(
+        [FromQuery] MaintenanceAlertQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _maintenanceService.GetAlertsAsync(query, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("canh-bao/scan")]
+    [ProducesResponseType(typeof(BaseResponse<MaintenanceAlertScanResultDto>), 200)]
+    public async Task<IActionResult> ScanAlerts(CancellationToken cancellationToken = default)
+    {
+        var result = await _maintenanceService.ScanAlertsAsync(cancellationToken);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPut("canh-bao/{id:long}/resolve")]
+    [ProducesResponseType(typeof(BaseResponse<object>), 200)]
+    public async Task<IActionResult> ResolveAlert(
+        [FromRoute] long id,
+        [FromBody] ResolveMaintenanceAlertRequest? request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _maintenanceService.ResolveAlertAsync(
+            id,
+            request?.ResolvedBy,
+            cancellationToken);
+
+        return result.Success ? Ok(result) : NotFound(result);
     }
 }
