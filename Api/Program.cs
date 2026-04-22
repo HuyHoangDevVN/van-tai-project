@@ -5,6 +5,7 @@ using Api.Security;
 using Core.Sql;
 using Core.Sql.Config;
 using Microsoft.OpenApi.Models;
+using MySqlConnector;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -162,6 +163,32 @@ else
 // =============================================================================
 
 var app = builder.Build();
+
+var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+var startupConnectionString = app.Configuration.GetConnectionString("DefaultConnection");
+var startupTunnelOptions = app.Configuration.GetSection(SshTunnelOptions.SectionName).Get<SshTunnelOptions>() ?? new SshTunnelOptions();
+
+if (string.IsNullOrWhiteSpace(startupConnectionString))
+{
+    startupLogger.LogWarning(
+        "Application starting in environment {Environment} without DefaultConnection.",
+        app.Environment.EnvironmentName);
+}
+else
+{
+    var csb = new MySqlConnectionStringBuilder(startupConnectionString);
+    startupLogger.LogInformation(
+        "Application starting. Environment={Environment}, DbHost={DbHost}, DbPort={DbPort}, Database={Database}, User={User}, SshTunnelEnabled={TunnelEnabled}, TunnelLocalPort={LocalPort}, RemoteMySql={RemoteHost}:{RemotePort}",
+        app.Environment.EnvironmentName,
+        csb.Server,
+        csb.Port,
+        csb.Database,
+        csb.UserID,
+        startupTunnelOptions.Enabled,
+        startupTunnelOptions.LocalPort,
+        startupTunnelOptions.RemoteMySqlHost,
+        startupTunnelOptions.RemoteMySqlPort);
+}
 
 // =============================================================================
 // MIDDLEWARE PIPELINE

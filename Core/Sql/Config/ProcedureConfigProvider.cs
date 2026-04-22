@@ -157,7 +157,13 @@ public class ProcedureConfigProvider : IProcedureConfigProvider
 
             configs = await LoadFromDatabaseAsync();
 
-            // Store in cache
+            if (configs.Count == 0)
+            {
+                _logger.LogWarning(
+                    "Sys_ProcedureConfig query succeeded but returned 0 active mappings. Empty result will not be cached.");
+                return configs;
+            }
+
             _cache.Set(CacheKey, configs, _cacheOptions);
 
             _logger.LogInformation(
@@ -196,15 +202,15 @@ public class ProcedureConfigProvider : IProcedureConfigProvider
 
             var result = await sqlService.ExecuteSqlRawCommandAsync<ProcedureConfigDto>(sqlModel);
 
-            if (!result.Success || result.Data == null)
+            if (!result.Success)
             {
-                _logger.LogWarning(
-                    "Failed to load procedure configs from database: {Message}",
-                    result.Message);
-                return new Dictionary<string, string>();
+                throw new InvalidOperationException(
+                    $"Failed to load procedure configs from database: {result.Message}");
             }
 
-            var dictionary = result.Data.ToDictionary(
+            var data = result.Data ?? [];
+
+            var dictionary = data.ToDictionary(
                 x => x.FunctionKey,
                 x => x.ProcedureName,
                 StringComparer.OrdinalIgnoreCase);

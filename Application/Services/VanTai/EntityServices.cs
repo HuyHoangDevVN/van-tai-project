@@ -417,9 +417,9 @@ public class ChuyenXeService : BaseService, IChuyenXeService
         try
         {
             // Build entity-specific filter parameters matching proc_tim_kiem_chuyen_xe
-            // NOTE: Báº£ng chuyen_xe KHĂ”NG cĂ³ cá»™t trang_thai, chá»‰ filter theo ma_tuyen vĂ  ngĂ y
             var additionalParams = new[]
             {
+                SqlParamModel.Input("p_trang_thai", NullIfEmpty(request.Status)),
                 SqlParamModel.Input("p_ma_tuyen", NullIfEmpty(request.MaTuyen)),
                 SqlParamModel.Input("p_tu_ngay", request.FromDate),
                 SqlParamModel.Input("p_den_ngay", request.ToDate)
